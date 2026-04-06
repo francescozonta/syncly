@@ -2,34 +2,33 @@ const router = require('express').Router();
 const auth = require('../middleware/auth');
 const { pool } = require('../db/schema');
 
-// ========================
-// TEST USER ID (temporaneo)
-// ========================
 const TEST_USER_ID = '11111111-1111-1111-1111-111111111111';
 
 router.get('/', auth, async (req, res) => {
+  const userId = req.user?.id || TEST_USER_ID;
   const { rows } = await pool.query(
     `SELECT p.* FROM projects p
      JOIN project_members pm ON pm.project_id=p.id
      WHERE pm.user_id=$1 ORDER BY p.created_at`,
-    [req.user?.id || TEST_USER_ID]   // fallback per sicurezza
+    [userId]
   );
   res.json(rows);
 });
 
 router.post('/', auth, async (req, res) => {
   const { name, color } = req.body;
+  const userId = req.user?.id || TEST_USER_ID;
 
   const { rows } = await pool.query(
     'INSERT INTO projects (name, color, owner_id) VALUES ($1,$2,$3) RETURNING *',
-    [name, color || '#185FA5', TEST_USER_ID]
+    [name, color || '#185FA5', userId]
   );
 
   const project = rows[0];
 
   await pool.query(
     'INSERT INTO project_members (project_id, user_id) VALUES ($1,$2)',
-    [project.id, TEST_USER_ID]
+    [project.id, userId]
   );
 
   res.json(project);
